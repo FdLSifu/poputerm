@@ -1,51 +1,89 @@
 #!/usr/bin/python
 import os
-from Xlib.display import Display
+import subprocess
 
-shell = "/home/fdlsifu/Documents/tools/st/st -g 90x24+700+315 -e tmux new-session -A -s popterm"
-shell_wmclass = "st-256color"
-shell_window = None
-shell_name = "st"
+SHELL = "alacritty"
+SHELL_TITLE = "alacritty_popupterm"
+SHELL_GEO = "90 24"
+SHELL_XY = "700 315"
+TMUX = "tmux new-session -A -s popupterm"
 
-def close_term():
-    try:
-        f = open('/tmp/popupterm_pid','r')
-        pid = int(f.read())
-        f.close()
-        os.system('kill -9 '+str(pid))
-    except:
-        pass
+NOT_RUNNING = "not_running"
+UNMAPPED = "unmapped"
 
-def launch_term():
-    popupterm_pid = os.spawnvpe(os.P_NOWAIT, shell.split(' ')[0] , shell.split(' '),os.environ)
-    f = open('/tmp/popupterm_pid','w')
-    f.write(str(popupterm_pid))
-    f.close()
+def exec(cmd,get_output=False):
+    p = subprocess.Popen(cmd, env=os.environ, stdout=subprocess.PIPE, shell=True)
+    if get_output:
+        (output,_) = p.communicate()
+        return output
 
-def findWindowHierrarchy(window,wmclass):
-    global shell_window
-    children = window.query_tree().children
-    for w in children:
-        if shell_window:
-            break
-        current_class = w.get_wm_class()
-        if current_class and wmclass == current_class[0]:
-            shell_window = w
-        findWindowHierrarchy(w,wmclass)
-
-def is_launched():
-    global shell_window
-
-    display = Display()
-    root = display.screen().root
-    findWindowHierrarchy(root,shell_wmclass)
-    if shell_window:
-        return True
-    else:
+def running():
+    if getwid() == NOT_RUNNING:
         return False
+    return True
 
+def toggle():
+    wid = getwid()
+    cmd = "xdotool "
+    if wid == UNMAPPED:
+        cmd += "windowmap "
+        wid = getwid_unmapped()
+        cmd += wid.decode()
+        
+        exec(cmd)
+        move(wid)
+        print("raise")
+    else:
+        cmd += "windowunmap "
+        cmd += wid.decode()
+        exec(cmd)
+        print("hide")
 
-if not is_launched():
-    launch_term()
-else:
-    close_term()
+def getwid_unmapped():
+    cmd = "xdotool search --name " + SHELL_TITLE
+    output = exec(cmd,True)
+    return output[:-1]
+
+def getwid():
+    cmd = "pidof " + SHELL
+    output = exec(cmd,True)
+    if output == b'':
+        return NOT_RUNNING
+    else:
+        pid = output[:-1]
+        cmd = "getwindidbypid " + pid.decode()
+        output = exec(cmd,True)
+
+        if output == b'':
+            return UNMAPPED
+        else:
+            return output[:-1]
+
+def move(wid):
+    if wid == NOT_RUNNING or wid == UNMAPPED:
+        return
+
+    cmd = "xdotool windowmove " + wid.decode() + " " + SHELL_XY
+    exec(cmd)
+
+def create():
+    cmd = SHELL
+    cmd += " -t "
+    cmd += SHELL_TITLE
+    cmd += " -e "
+    cmd += TMUX
+    exec(cmd)
+    wid = getwid()
+    while (wid == UNMAPPED):
+        wid = getwid()
+
+    move(wid)
+    print("create")
+
+def main():
+    if not running():
+        create()
+    else:
+        toggle()
+    
+main()
