@@ -4,8 +4,8 @@ import subprocess
 
 SHELL = "alacritty"
 SHELL_TITLE = "alacritty_popupterm"
-SHELL_GEO = "90 24"
-SHELL_XY = "700 315"
+SHELL_GEO = "640 360"
+SHELL_XY = "640 360"
 TMUX = "tmux new-session -A -s popupterm"
 
 NOT_RUNNING = "not_running"
@@ -29,15 +29,15 @@ def toggle():
         cmd += "windowmap "
         wid = getwid_unmapped()
         cmd += wid.decode()
-        
-        exec(cmd)
-        move(wid)
         print("raise")
     else:
         cmd += "windowunmap "
         cmd += wid.decode()
-        exec(cmd)
         print("hide")
+    exec(cmd)
+    move(wid)
+    resize(wid)
+
 
 def getwid_unmapped():
     cmd = "xdotool search --name " + SHELL_TITLE
@@ -66,6 +66,12 @@ def move(wid):
     cmd = "xdotool windowmove " + wid.decode() + " " + SHELL_XY
     exec(cmd)
 
+def resize(wid):
+    if wid == NOT_RUNNING or wid == UNMAPPED:
+        return
+    cmd = "xdotool windowsize " + wid.decode() + " " + SHELL_GEO
+    exec(cmd)
+
 def create():
     cmd = SHELL
     cmd += " -t "
@@ -78,6 +84,7 @@ def create():
         wid = getwid()
 
     move(wid)
+    resize(wid)
     print("create")
 
 def main():
