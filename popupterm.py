@@ -4,9 +4,16 @@ import subprocess
 
 SHELL = "alacritty"
 SHELL_TITLE = "alacritty_popupterm"
-SHELL_GEO = "640 360"
+SHELL_GEO = "700 500"
 SHELL_XY = "640 360"
 TMUX = "tmux new-session -A -s popupterm"
+exec_cmd = SHELL
+exec_cmd += " --config-file "
+exec_cmd += "/home/fdlsifu/.config/alacritty_light.yml"
+exec_cmd += " -t "
+exec_cmd += SHELL_TITLE
+exec_cmd += " -e "
+exec_cmd += TMUX
 
 NOT_RUNNING = "not_running"
 UNMAPPED = "unmapped"
@@ -18,6 +25,8 @@ def exec(cmd,get_output=False):
         return output
 
 def running():
+    if exec("xdotool search --name " + SHELL_TITLE,True) == b"":
+        return False
     if getwid() == NOT_RUNNING:
         return False
     return True
@@ -45,7 +54,7 @@ def getwid_unmapped():
     return output[:-1]
 
 def getwid():
-    cmd = "pidof " + SHELL
+    cmd = "ps aux | grep '" + exec_cmd + "' | grep -v grep | awk '{print $2}'"
     output = exec(cmd,True)
     if output == b'':
         return NOT_RUNNING
@@ -73,12 +82,7 @@ def resize(wid):
     exec(cmd)
 
 def create():
-    cmd = SHELL
-    cmd += " -t "
-    cmd += SHELL_TITLE
-    cmd += " -e "
-    cmd += TMUX
-    exec(cmd)
+    exec(exec_cmd)
     wid = getwid()
     while (wid == UNMAPPED):
         wid = getwid()
